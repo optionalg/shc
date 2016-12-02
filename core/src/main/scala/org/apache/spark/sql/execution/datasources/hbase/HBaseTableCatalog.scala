@@ -17,7 +17,9 @@
 
 package org.apache.spark.sql.execution.datasources.hbase
 
-import scala.collection.mutable
+import java.util.{TreeMap => JTreeMap}
+
+import scala.collection.JavaConverters._
 
 import org.apache.avro.Schema
 import org.apache.hadoop.hbase.util.Bytes
@@ -108,14 +110,14 @@ case class RowKey(k: String) {
   }
 }
 // The map between the column presented to Spark and the HBase field
-case class SchemaMap(map: mutable.HashMap[String, Field]) {
-  def toFields = map.map { case (name, field) =>
+case class SchemaMap(map: JTreeMap[String, Field]) {
+  def toFields = map.asScala.map { case (name, field) =>
     StructField(name, field.dt)
   }.toSeq
 
-  def fields = map.values
+  def fields = map.values.asScala
 
-  def getField(name: String) = map(name)
+  def getField(name: String) = map.get(name)
 }
 
 
@@ -189,7 +191,7 @@ object HBaseTableCatalog {
     val nSpace = tableMeta.get(nameSpace).getOrElse("default").asInstanceOf[String]
     val tName = tableMeta.get(tableName).get.asInstanceOf[String]
     val cIter = map.get(columns).get.asInstanceOf[Map[String, Map[String, String]]].toIterator
-    val schemaMap = mutable.HashMap.empty[String, Field]
+    val schemaMap = new JTreeMap[String, Field]()
     cIter.foreach { case (name, column)=>
       val sd = {
         column.get(sedes).asInstanceOf[Option[String]].map( n =>
@@ -202,7 +204,7 @@ object HBaseTableCatalog {
         column.get(col).get,
         column.get(`type`),
         sAvro, sd, len)
-      schemaMap.+= ((name, f))
+      schemaMap.put(name, f)
     }
     val numReg = parameters.get(newTable).map(x => x.toInt).getOrElse(0)
     val rKey = RowKey(map.get(rowKey).get.asInstanceOf[String])

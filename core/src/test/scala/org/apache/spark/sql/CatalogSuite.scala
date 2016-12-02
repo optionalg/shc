@@ -40,9 +40,14 @@ class CatalogSuite  extends FunSuite with BeforeAndAfterEach with BeforeAndAfter
           |}""".stripMargin
 
   test("Catalog meta data check") {
-     val m = HBaseTableCatalog(Map(HBaseTableCatalog.tableCatalog->catalog))
+    val m = HBaseTableCatalog(Map(HBaseTableCatalog.tableCatalog->catalog))
     assert(m.row.fields.filter(_.length == -1).isEmpty)
     assert(m.row.length == 10)
   }
 
+  test("Catalog should preserve the columns order") {
+    val m = HBaseTableCatalog(Map(HBaseTableCatalog.tableCatalog->catalog))
+    assert(m.toDataType.fields.map(_.name).sameElements(
+      Array("col00", "col01", "col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8")))
+  }
 }
