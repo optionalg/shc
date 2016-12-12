@@ -36,30 +36,44 @@ import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
 
-/**
- * val people = sqlContext.read.format("hbase").load("people")
- */
-private[sql] class DefaultSource extends RelationProvider with CreatableRelationProvider {//with DataSourceRegister {
+// For now we don't want the hbase datasource to be able to create new hbase tables, so we put the
+// original implementation that supports creating new hbase tables into a package {{
+// org.apache.spark.sql.execution.datasources.hbase.readwrite }}, and use a read-only datasource in
+// the original {{ org.apache.spark.sql.execution.datasources.hbase }} pacakge.
+package readwrite {
 
-  //override def shortName(): String = "hbase"
+  private[sql] class DefaultSource extends RelationProvider with CreatableRelationProvider {//with DataSourceRegister {
+
+    //override def shortName(): String = "hbase"
+
+    override def createRelation(
+      sqlContext: SQLContext,
+      parameters: Map[String, String]): BaseRelation = {
+      HBaseRelation(parameters, None)(sqlContext)
+    }
+
+    override def createRelation(
+      sqlContext: SQLContext,
+      mode: SaveMode,
+      parameters: Map[String, String],
+      data: DataFrame): BaseRelation = {
+      val relation = HBaseRelation(parameters, Some(data.schema))(sqlContext)
+      relation.createTable()
+      relation.insert(data, false)
+      relation
+    }
+  }
+}
+
+private[sql] class DefaultSource extends RelationProvider {
 
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String]): BaseRelation = {
     HBaseRelation(parameters, None)(sqlContext)
   }
-
-  override def createRelation(
-    sqlContext: SQLContext,
-    mode: SaveMode,
-    parameters: Map[String, String],
-    data: DataFrame): BaseRelation = {
-    val relation = HBaseRelation(parameters, Some(data.schema))(sqlContext)
-    relation.createTable()
-    relation.insert(data, false)
-    relation
-  }
 }
+
 
 case class HBaseRelation(
     parameters: Map[String, String],
