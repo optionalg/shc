@@ -31,3 +31,9 @@ class DoubleSedes extends Sedes {
   }
 }
 
+
+// Sedes for composite key
+trait RowSedes {
+  def serialize(value: Any*): Array[Byte]
+  def deserialize(bytes: Array[Byte], start: Int, end: Int): Seq[Any]
+}

@@ -93,7 +93,7 @@ case class Field(
 
 // The row key definition, with each key refer to the col defined in Field, e.g.,
 // key1:key2:key3
-case class RowKey(k: String) {
+case class RowKey(k: String, val sedes: Option[RowSedes]) {
   val keys = k.split(":")
   var fields: Seq[Field] = _
   var varLength = false
@@ -159,6 +159,7 @@ object HBaseTableCatalog {
   val tableCatalog = "catalog"
   // The row key with format key1:key2 specifying table row key
   val rowKey = "rowkey"
+  val rowSedes = "rowSedes"
   // The key for hbase table whose value specify namespace and table name
   val table = "table"
   // The namespace of hbase table
@@ -191,6 +192,11 @@ object HBaseTableCatalog {
     val nSpace = tableMeta.get(nameSpace).getOrElse("default").asInstanceOf[String]
     val tName = tableMeta.get(tableName).get.asInstanceOf[String]
     val schemaMap = mutable.LinkedHashMap.empty[String, Field]
+    val rowSD = {
+      map.get(rowSedes).asInstanceOf[Option[String]].map( n =>
+        Class.forName(n).newInstance().asInstanceOf[RowSedes]
+      )
+    }
     getColsPreservingOrder(jObj).foreach { case (name, column)=>
       val sd = {
         column.get(sedes).asInstanceOf[Option[String]].map( n =>
@@ -206,7 +212,7 @@ object HBaseTableCatalog {
       schemaMap.+= ((name, f))
     }
     val numReg = parameters.get(newTable).map(x => x.toInt).getOrElse(0)
-    val rKey = RowKey(map.get(rowKey).get.asInstanceOf[String])
+    val rKey = RowKey(map.get(rowKey).get.asInstanceOf[String], rowSD)
     HBaseTableCatalog(nSpace, tName, rKey, SchemaMap(schemaMap), numReg)
   }
 

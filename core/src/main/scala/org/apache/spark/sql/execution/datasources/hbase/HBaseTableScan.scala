@@ -107,10 +107,19 @@ private[hbase] class HBaseTableScanRDD(
     })._2.toMap
   }
 
+  def parseRowKeyWithCustomSedes(buffer: Array[Byte], sedes: RowSedes, keyFields: Seq[Field]): Map[Field, Any] = {
+    val parts = sedes.deserialize(buffer, 0, buffer.length)
+    keyFields.zip(parts).toMap
+  }
+
   // TODO: It is a big performance overhead, as for each row, there is a hashmap lookup.
   def buildRow(fields: Seq[Field], result: Result): Row = {
     val r = result.getRow
-    val keySeq = parseRowKey(r, relation.catalog.getRowKey)
+    val rowKey = relation.catalog.row
+    val keySeq = rowKey.sedes match {
+      case Some(sedes) => parseRowKeyWithCustomSedes(r, sedes, rowKey.fields)
+      case None => parseRowKey(r, rowKey.fields)
+    }
     val valueSeq = fields.filter(!_.isRowKey).map { x =>
       val kv = result.getColumnLatestCell(Bytes.toBytes(x.cf), Bytes.toBytes(x.col))
       if (kv == null || kv.getValueLength == 0) {
