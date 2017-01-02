@@ -12,7 +12,7 @@ bintray_repo=bintray-scrapinghub-maven
 bintray_org=scrapinghub
 bintray_pkg=shc
 
-version=1.0.3-2.0-s_2.11
+version=1.0.4-2.0-s_2.11
 group_id=com.hortonworks
 artifact_id=shc-core
 parent_artifact_id=shc
